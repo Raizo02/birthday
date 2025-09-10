@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Happy Birthday🎉</title>
+  <style>
+    /* Reset */
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;}
+    body{
+      background: radial-gradient(ellipse at bottom, #0b1226 0%, #05060a 60%);
+      color: #fff;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+      overflow:hidden;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-direction:column;
+      gap:20px;
+      padding:20px;
+    }
+
+    h1{
+      font-size:clamp(2rem, 5vw, 4rem);
+      letter-spacing:0.06em;
+      text-align:center;
+      text-shadow: 0 6px 25px rgba(0,0,0,0.6), 0 2px 6px rgba(255,255,255,0.06) inset;
+      background: linear-gradient(90deg, #ffd86b, #ff6bcb, #8b78ff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    p.subtitle{
+      font-size:clamp(0.9rem, 2.2vw, 1.25rem);
+      color: rgba(255,255,255,0.85);
+      opacity:0.9;
+      margin-top:-8px;
+      text-align:center;
+    }
+
+    /* Card for instruction */
+    .card{
+      position:fixed;
+      bottom:18px;
+      left:18px;
+      background: rgba(255,255,255,0.06);
+      padding:10px 14px;
+      border-radius:12px;
+      font-size:0.9rem;
+      color: rgba(255,255,255,0.9);
+      backdrop-filter: blur(6px);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+    }
+
+    /* Make canvas cover whole screen */
+    canvas#fx{
+      position:fixed;
+      inset:0;
+      width:100%;
+      height:100%;
+      z-index:-1; /* behind text */
+    }
+
+    /* Button to toggle full-screen fireworks */
+    .controls{
+      position:fixed;
+      top:18px;
+      right:18px;
+      display:flex;
+      gap:8px;
+      z-index:20;
+    }
+
+    .btn{
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+      border:1px solid rgba(255,255,255,0.08);
+      padding:8px 12px;
+      border-radius:10px;
+      color:#fff;
+      cursor:pointer;
+      font-size:0.9rem;
+      backdrop-filter: blur(4px);
+    }
+
+    .btn:active{transform:translateY(1px)}
+
+    @media (max-width:480px){
+      .card{display:none}
+    }
+  </style>
+</head>
+<body>
+  <canvas id="fx"></canvas>
+
+  <h1 id="message">Happy Birthday Panglima!</h1>
+  <p class="subtitle">Semoga dipanjangkan umur dalam keberkatan, dilimpahkan rezeki yang halal lagi berkat, dianugerahkan kesihatan yang baik, hati yang tenang, serta dimudahkan segala urusan dunia dan akhirat.
+Moga sentiasa berada dalam lindungan rahmat dan kasih sayang Allah, serta diberikan kebahagiaan bersama orang tersayang. Aamiin 🤲💖</p>
+
+  <div class="controls">
+    <button id="pauseBtn" class="btn">Pause</button>
+    <button id="changeBtn" class="btn">Change Text</button>
+  </div>
+
+  <div class="card">Tip: Klik "Change Text" untuk tukar mesej.</div>
+
+  <script>
+    // Simple fireworks using Canvas and particles.
+    const canvas = document.getElementById('fx');
+    const ctx = canvas.getContext('2d');
+
+    let W = canvas.width = innerWidth;
+    let H = canvas.height = innerHeight;
+
+    const rand = (min, max) => Math.random()*(max-min)+min;
+
+    // Particle class
+    class Particle{
+      constructor(x,y,dx,dy,color,life, size){
+        this.x = x; this.y = y;
+        this.dx = dx; this.dy = dy;
+        this.color = color;
+        this.life = life; // total life
+        this.age = 0;
+        this.size = size;
+      }
+      update(dt){
+        this.age += dt;
+        // gravity & air resistance
+        this.dy += 0.0009 * dt * 60; // gravity scaled
+        this.dx *= 0.999; this.dy *= 0.999;
+        this.x += this.dx * dt * 60;
+        this.y += this.dy * dt * 60;
+      }
+      draw(ctx){
+        const t = this.age/this.life;
+        const alpha = Math.max(1 - t, 0);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(${this.color.r},${this.color.g},${this.color.b},${alpha})`;
+        ctx.arc(this.x, this.y, this.size * (1 - t*0.6), 0, Math.PI*2);
+        ctx.fill();
+      }
+      alive(){return this.age < this.life}
+    }
+
+    // Firework rocket that explodes to particles
+    class Rocket{
+      constructor(){
+        this.x = rand(100, W-100);
+        this.y = H + 10;
+        this.vx = rand(-0.5, 0.5);
+        this.vy = rand(-8.5, -10.5);
+        this.color = {r:Math.floor(rand(120,255)), g:Math.floor(rand(80,255)), b:Math.floor(rand(80,255))};
+        this.exploded = false;
+      }
+      update(dt){
+        this.vy += 0.0009 * dt * 60; // gravity
+        this.vy *= 0.999; this.vx *= 0.999;
+        this.x += this.vx * dt * 60;
+        this.y += this.vy * dt * 60;
+        if(this.vy >= -1.2 && !this.exploded){
+          this.exploded = true; return true; // should explode
+        }
+        return false;
+      }
+      draw(ctx){
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.beginPath();
+        ctx.fillStyle = `rgb(${this.color.r},${this.color.g},${this.color.b})`;
+        ctx.arc(this.x, this.y, 3, 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+
+    let rockets = [];
+    let particles = [];
+    let last = performance.now();
+    let running = true;
+
+    function explode(x,y,color){
+      const count = Math.floor(rand(30, 120));
+      for(let i=0;i<count;i++){
+        const angle = rand(0, Math.PI*2);
+        const speed = rand(1.8, 6.5);
+        const dx = Math.cos(angle)*speed;
+        const dy = Math.sin(angle)*speed;
+        const life = rand(0.6, 1.8);
+        const size = rand(1.4, 3.8);
+        const c = {
+          r: Math.min(255, Math.floor(color.r + rand(-60,60))),
+          g: Math.min(255, Math.floor(color.g + rand(-60,60))),
+          b: Math.min(255, Math.floor(color.b + rand(-60,60)))
+        };
+        particles.push(new Particle(x,y,dx,dy,c,life,size));
+      }
+      // flash particle core
+      for(let i=0;i<6;i++){
+        particles.push(new Particle(x,y,rand(-1.5,1.5),rand(-1.5,1.5),{r:255,g:220,b:180},0.18,rand(2.6,5)));
+      }
+    }
+
+    // launch rockets periodically
+    let launchTimer = 0;
+    let launchInterval = 550; // ms between launches
+
+    function loop(now){
+      const dt = Math.min(0.06, (now-last)/1000);
+      last = now;
+      if(running){
+        // fade background slightly to create trails
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = 'rgba(3,6,12,0.28)';
+        ctx.fillRect(0,0,W,H);
+
+        // update rockets
+        for(let i = rockets.length-1; i>=0; i--){
+          const r = rockets[i];
+          const shouldExplode = r.update(dt);
+          r.draw(ctx);
+          if(shouldExplode){
+            explode(r.x, r.y, r.color);
+            rockets.splice(i,1);
+          }
+        }
+
+        // update particles
+        for(let i = particles.length-1; i>=0; i--){
+          const p = particles[i];
+          p.update(dt);
+          if(p.alive()) p.draw(ctx);
+          else particles.splice(i,1);
+        }
+
+        // periodic launch
+        launchTimer += dt*1000;
+        if(launchTimer > launchInterval){
+          launchTimer = 0;
+          rockets.push(new Rocket());
+          // slightly vary interval
+          launchInterval = rand(350, 900);
+        }
+      }
+      requestAnimationFrame(loop);
+    }
+
+    // handle resize
+    addEventListener('resize', ()=>{ W = canvas.width = innerWidth; H = canvas.height = innerHeight; });
+
+    // interactions
+    document.getElementById('pauseBtn').addEventListener('click', ()=>{
+      running = !running;
+      document.getElementById('pauseBtn').textContent = running ? 'Pause' : 'Resume';
+    });
+
+    document.getElementById('changeBtn').addEventListener('click', ()=>{
+      const txt = prompt('Tukar mesej:', document.getElementById('message').textContent);
+      if(txt !== null) document.getElementById('message').textContent = txt;
+    });
+
+    // click to create big firework
+    canvas.addEventListener('pointerdown', (e)=>{
+      const x = e.clientX, y = e.clientY;
+      explode(x,y,{r: Math.floor(rand(120,255)), g: Math.floor(rand(80,255)), b: Math.floor(rand(80,255))});
+    });
+
+    // initial background fill
+    ctx.fillStyle = '#04050a'; ctx.fillRect(0,0,W,H);
+
+    // start loop
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
